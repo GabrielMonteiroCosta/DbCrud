@@ -1,0 +1,190 @@
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Net.NetworkInformation;
+using System.Text.Json.Serialization;
+
+internal class Program
+{
+    //todo criar o crud para informações do banco, criar o banco Pessoa com Id, Nome, Status e Telefone
+    const string connectString = "Server=DESKTOP-DB5M39P;Database=Pessoa;User Id=sa;Password=Vector5**;";
+    private static void Main(string[] args)
+    {
+        List<Pessoa> pessoas = new();
+
+        while (true)
+        {
+
+            Console.WriteLine("" +
+                "\n(1) Adicionar um usuário" +
+                "\n(2) Listar os usuários cadastrados" +
+                "\n(3) Atualizar o cadastro de um usuário" +
+                "\n(4) Deletar o cadastro de um usuário" +
+                "\n(0) Encerrar o programa");
+
+            Console.WriteLine("\nSelecione a operação desejada: ");
+            string opcao = Console.ReadLine();
+
+            switch (opcao)
+            {
+                case "1":
+                    CriarUser(pessoas);
+                    break;
+                case "2":
+                    ListarUser(pessoas);
+                    break;
+                case "3":
+                    AtualizarUser(pessoas);
+                    break;
+                case "4":
+                    DeletarUser(pessoas);
+                    break;
+                case "0":
+                    Console.WriteLine("Saindo e encerrando programa.");
+                    return;
+                default: Console.WriteLine("Você digitou uma opção inválida!"); break;
+            }
+        }
+        static void CriarUser(List<Pessoa> pessoas)
+        {
+            using (SqlConnection connect = new(connectString))
+            {
+                connect.Open();
+                string query = "Insert into pessoa values (@id, @nome, @status, @telefone)";
+                using (SqlCommand command = new(query, connect))
+                {
+
+                    int maxCodigo = 1;
+                    foreach (var p in pessoas)
+                    {
+                        if (p.id >= maxCodigo)
+                        {
+                            maxCodigo = p.id + 1;
+                        }
+                    }
+
+                    Pessoa pessoa = new();
+                    Console.WriteLine("Digite o nome do novo usuário: ");
+                    string nome = Console.ReadLine();
+                    Console.WriteLine("Digite o telefone do usuário: ");
+                    string telefone = Console.ReadLine();
+                    int status = 1;
+                    int id = maxCodigo;
+                    pessoas.Add(pessoa);
+                    command.Parameters.AddWithValue("@nome", nome);
+                    command.Parameters.AddWithValue("@id", id);
+                    command.Parameters.AddWithValue("@status", status);
+                    command.Parameters.AddWithValue("@telefone", telefone);
+                    int adicionaLinha = command.ExecuteNonQuery();
+                    Console.WriteLine("Usuário cadastrado com sucesso.");
+                }
+
+                connect.Close();
+            }
+        }
+        static void ListarUser(List<Pessoa> pessoas)
+        {
+            using (SqlConnection connect = new(connectString))
+            {
+                connect.Open();
+                string query = @"select
+                         id,
+                         nome,
+                         status,
+                         telefone
+                         From pessoa";
+                using (SqlCommand command = new(query, connect))
+                {
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int maxCodigo = 1;
+                            foreach (var p in pessoas)
+                            {
+                                if (p.id >= maxCodigo)
+                                {
+                                    maxCodigo = p.id + 1;
+                                }
+                            }
+                            Pessoa pessoa = new();
+                            pessoa.id = Convert.ToInt32(reader["id"]);
+                            pessoa.nome = reader["nome"].ToString();
+                            pessoa.status = Convert.ToInt32(reader["status"]);
+                            pessoa.telefone = reader["telefone"].ToString();
+                            pessoas.Add(pessoa);
+                        }
+                    }
+                    Console.WriteLine("Lista de usuários já cadastrados: ");
+                    Console.WriteLine(JsonConvert.SerializeObject(new { pessoas }, Formatting.Indented));
+                }
+
+                connect.Close();
+            }
+        }
+        static void AtualizarUser(List<Pessoa> pessoas)
+        {
+            using (SqlConnection connect = new(connectString))
+            {
+                connect.Open();
+                string query = @"select
+                         id,
+                         nome,
+                         status,
+                         telefone
+                         From pessoa";
+                using (SqlCommand command = new(query, connect))
+                {
+                    if (pessoas.Count == 0)
+                    {
+                        Console.WriteLine("Não há usuários cadastrados.");
+                        return;
+                    }
+
+                    Console.WriteLine("Digite o ID do usuário que você deseja atualizar: ");
+                    if (int.TryParse(Console.ReadLine(), out int id))
+                    {
+                        foreach (var pessoa in pessoas)
+                        {
+                            if (pessoa.id == id)
+                            {
+                                pessoa.id = id;
+                                Console.WriteLine($"O ID selecionado foi {id}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        static void DeletarUser(List<Pessoa> pessoas)
+        {
+            Console.WriteLine("Selecione o ID do cliente que você deseja deletar: ");
+        }
+    }
+
+    public class Pessoa
+    {
+        public int id { get; set; }
+        /*public Pessoa(int _id)
+        {
+            Id = _id;
+        }
+        public int Id
+        {
+            get { return Id; }
+            set { Id = value; }
+
+
+        }*/
+        public string nome { get; set; }
+        public string telefone { get; set; }
+        public int status { get; set; }
+    }
+    public class DatabaseConfig
+    {
+        public string Server { get; set; }
+        public string Database { get; set; }
+        public string UserId { get; set; }
+        public string Password { get; set; }
+    }
+}
