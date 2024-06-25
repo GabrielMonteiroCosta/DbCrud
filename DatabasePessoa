@@ -1,0 +1,14 @@
+use Pessoa;
+
+create table pessoa (
+	id int not null,
+	nome varchar(50) not null,
+	status int not null,
+	telefone varchar(11) null	
+	);
+	
+insert into pessoa values (1, 'Gabriel', 1, '11941012268');
+
+select * from pessoa;
+
+delete from pessoa where nome = 'Teste';
