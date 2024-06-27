@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using System.Collections.Generic;
 using System.Data.SqlClient;
 
 internal class Program
@@ -52,6 +51,7 @@ internal class Program
         using (SqlConnection connect = new(connectString))
         {
             connect.Open();
+            // SELECT FROM pessoa WHERE id = "@id"
             string query = "INSERT INTO pessoa (id, nome, status, telefone) VALUES (@id, @nome, @status, @telefone)";
             using (SqlCommand command = new(query, connect))
             {
@@ -67,23 +67,31 @@ internal class Program
 
                 Pessoa pessoa = new();
                 Console.WriteLine("Digite o nome do novo usuário: ");
-                string nome = Console.ReadLine();
+                pessoa.nome = Console.ReadLine();
                 Console.WriteLine("Digite o telefone do usuário: ");
-                string telefone = Console.ReadLine();
+                pessoa.telefone = Console.ReadLine();
                 int status = 1;
                 int id = maxCodigo;
                 pessoa.id = id;
-                pessoa.nome = nome;
-                pessoa.telefone = telefone;
+                
+                
                 pessoa.status = status;
                 pessoas.Add(pessoa);
 
-                command.Parameters.AddWithValue("@id", id);
-                command.Parameters.AddWithValue("@nome", nome);
-                command.Parameters.AddWithValue("@status", status);
-                command.Parameters.AddWithValue("@telefone", telefone);
+                //command.Parameters.AddRange(new SqlParameter[]
+                //{
+                //    new("@id", id),
+                //    new("@nome", nome),
+                //    new("@status", status),
+                //    new("@telefone", telefone),
+                //});
 
-                int adicionaLinha = command.ExecuteNonQuery();
+                command.Parameters.AddWithValue("@id", id);
+                command.Parameters.AddWithValue("@nome", pessoa.nome);
+                command.Parameters.AddWithValue("@status", status);
+                command.Parameters.AddWithValue("@telefone", string.IsNullOrEmpty(pessoa.telefone) ? DBNull.Value : pessoa.telefone);
+
+                command.ExecuteNonQuery();
                 Console.WriteLine("Usuário cadastrado com sucesso.");
             }
 
@@ -101,7 +109,7 @@ internal class Program
             {
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    pessoas.Clear(); // Limpa a lista antes de adicionar os usuários do banco de dados
+                    pessoas.Clear();
                     while (reader.Read())
                     {
                         Pessoa pessoa = new()
@@ -109,7 +117,7 @@ internal class Program
                             id = Convert.ToInt32(reader["id"]),
                             nome = reader["nome"].ToString(),
                             status = Convert.ToInt32(reader["status"]),
-                            telefone = reader["telefone"].ToString()
+                            telefone = (reader["telefone"] ?? "").ToString()
                         };
                         pessoas.Add(pessoa);
                     }
@@ -128,13 +136,24 @@ internal class Program
         Console.WriteLine("Digite o ID do usuário que você deseja atualizar: ");
         if (int.TryParse(Console.ReadLine(), out int id))
         {
-            Pessoa pessoa = pessoas.Find(p => p.id == id);
-            if (pessoa != null)
+            //todo: Ir no banco buscar
+            Pessoa pessoa = null;
+            foreach (var p in pessoas)
+            {
+                if (p.id == id)
+                {
+                    pessoa = p;
+                    break;
+                }
+            }
+
+            if (pessoa is not null)
             {
                 Console.WriteLine($"O ID selecionado foi {id}");
-
+                Console.WriteLine($"O nome atual é : {pessoa.nome}");
                 Console.WriteLine("Digite o novo nome do usuário: ");
                 string novoNome = Console.ReadLine();
+                Console.WriteLine($"O Número de Telefone atual é {pessoa.telefone}");
                 Console.WriteLine("Digite o novo telefone do usuário: ");
                 string novoTelefone = Console.ReadLine();
 
@@ -146,7 +165,7 @@ internal class Program
                     {
                         command.Parameters.AddWithValue("@id", id);
                         command.Parameters.AddWithValue("@nome", novoNome);
-                        command.Parameters.AddWithValue("@telefone", novoTelefone);
+                        command.Parameters.AddWithValue("@telefone", novoTelefone ?? ""); // telefone ?? "").ToString()
 
                         int atualizaLinha = command.ExecuteNonQuery();
                         if (atualizaLinha > 0)
@@ -154,6 +173,8 @@ internal class Program
                             Console.WriteLine("Usuário atualizado com sucesso.");
                             pessoa.nome = novoNome;
                             pessoa.telefone = novoTelefone;
+                            Console.WriteLine($"O Nome do usuário foi atualizado de {pessoa.nome} para {novoNome}");
+                            Console.WriteLine($"O Telefone do usuário foi atualizado de {pessoa.telefone} para {novoTelefone}");
                         }
                         else
                         {
@@ -176,11 +197,20 @@ internal class Program
 
     static void DeletarUser(List<Pessoa> pessoas)
     {
-        ListarUser(pessoas);
         Console.WriteLine("Digite o ID do usuário que você deseja deletar: ");
         if (int.TryParse(Console.ReadLine(), out int id))
         {
-            Pessoa pessoa = pessoas.Find(p => p.id == id);
+            //todo: Ir no banco buscar
+            Pessoa pessoa = null;
+            foreach (var p in pessoas)
+            {
+                if (p.id == id)
+                {
+                    pessoa = p;
+                    break;
+                }
+            }
+
             if (pessoa != null)
             {
                 using (SqlConnection connect = new(connectString))
@@ -218,8 +248,8 @@ internal class Program
     public class Pessoa
     {
         public int id { get; set; }
-        public string nome { get; set; }
-        public string telefone { get; set; }
+        public string? nome { get; set; }
+        public string? telefone { get; set; }
         public int status { get; set; }
     }
 }
