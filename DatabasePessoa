@@ -12,3 +12,29 @@ insert into pessoa values (1, 'Gabriel', 1, '11941012268');
 select * from pessoa;
 
 delete from pessoa where nome = 'Teste';
+___________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+use Pessoa;
+
+declare @id int = (select isnull(max(id)+1,1) from pessoa);
+
+create table pessoa (
+	id int not null,
+	nome varchar(50) not null,
+	status int not null,
+	telefone varchar(11) null	
+	);
+
+
+insert into pessoa (nome, status, telefone) values ('Gabriel', 1, null);
+
+select * from pessoa;
+
+update pessoa 
+set status = '1' WHERE telefone = '11941012268'
+
+SELECT id FROM pessoa WHERE id = 1;
+
+delete pessoa where status = '0'
+
+delete from pessoa where nome = 'Teste' and status = '1';
