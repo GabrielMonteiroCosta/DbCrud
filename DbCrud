@@ -130,120 +130,134 @@ internal class Program
         }
     }
 
-    static void AtualizarUser(List<Pessoa> pessoas)
+   static void AtualizarUser(List<Pessoa> pessoas)
+{
+    ListarUser(pessoas);
+    Console.WriteLine("Digite o ID do usuário que você deseja atualizar: ");
+    if (int.TryParse(Console.ReadLine(), out int id))
     {
-        ListarUser(pessoas);
-        Console.WriteLine("Digite o ID do usuário que você deseja atualizar: ");
-        if (int.TryParse(Console.ReadLine(), out int id))
+        using (SqlConnection connect = new(connectString))
         {
-            //todo: Ir no banco buscar
+            connect.Open();
+            string query = "SELECT id, nome, status, telefone FROM pessoa WHERE id = @id";
             Pessoa pessoa = null;
-            foreach (var p in pessoas)
+            using (SqlCommand command = new(query, connect))
             {
-                if (p.id == id)
+                command.Parameters.AddWithValue("@id", id);
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    pessoa = p;
-                    break;
+                    if (reader.Read())
+                    {
+                        pessoa = new Pessoa
+                        {
+                            id = Convert.ToInt32(reader["id"]),
+                            nome = reader["nome"].ToString(),
+                            status = Convert.ToInt32(reader["status"]),
+                            telefone = reader["telefone"].ToString()
+                        };
+                    }
                 }
             }
 
             if (pessoa is not null)
             {
                 Console.WriteLine($"O ID selecionado foi {id}");
-                Console.WriteLine($"O nome atual é : {pessoa.nome}");
+                Console.WriteLine($"O nome atual é: {pessoa.nome}");
                 Console.WriteLine("Digite o novo nome do usuário: ");
                 string novoNome = Console.ReadLine();
-                Console.WriteLine($"O Número de Telefone atual é {pessoa.telefone}");
+                Console.WriteLine($"O Número de Telefone atual é: {pessoa.telefone}");
                 Console.WriteLine("Digite o novo telefone do usuário: ");
                 string novoTelefone = Console.ReadLine();
 
-                using (SqlConnection connect = new(connectString))
+                query = "UPDATE pessoa SET nome = @nome, telefone = @telefone WHERE id = @id";
+                using (SqlCommand command = new(query, connect))
                 {
-                    connect.Open();
-                    string query = "UPDATE pessoa SET nome = @nome, telefone = @telefone WHERE id = @id";
-                    using (SqlCommand command = new(query, connect))
-                    {
-                        command.Parameters.AddWithValue("@id", id);
-                        command.Parameters.AddWithValue("@nome", novoNome);
-                        command.Parameters.AddWithValue("@telefone", novoTelefone ?? ""); // telefone ?? "").ToString()
+                    command.Parameters.AddWithValue("@id", id);
+                    command.Parameters.AddWithValue("@nome", novoNome);
+                    command.Parameters.AddWithValue("@telefone", novoTelefone ?? (object)DBNull.Value);
 
-                        int atualizaLinha = command.ExecuteNonQuery();
-                        if (atualizaLinha > 0)
-                        {
-                            Console.WriteLine("Usuário atualizado com sucesso.");
-                            pessoa.nome = novoNome;
-                            pessoa.telefone = novoTelefone;
-                            Console.WriteLine($"O Nome do usuário foi atualizado de {pessoa.nome} para {novoNome}");
-                            Console.WriteLine($"O Telefone do usuário foi atualizado de {pessoa.telefone} para {novoTelefone}");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Erro ao atualizar o usuário.");
-                        }
+                    int atualizaLinha = command.ExecuteNonQuery();
+                    if (atualizaLinha > 0)
+                    {
+                        Console.WriteLine("Usuário atualizado com sucesso.");
                     }
-                    connect.Close();
+                    else
+                    {
+                        Console.WriteLine("Erro ao atualizar o usuário.");
+                    }
                 }
             }
             else
             {
                 Console.WriteLine("Usuário não encontrado.");
             }
-        }
-        else
-        {
-            Console.WriteLine("ID inválido.");
+
+            connect.Close();
         }
     }
+    else
+    {
+        Console.WriteLine("ID inválido.");
+    }
+}
+
 
     static void DeletarUser(List<Pessoa> pessoas)
+{
+    Console.WriteLine("Digite o ID do usuário que você deseja deletar: ");
+    if (int.TryParse(Console.ReadLine(), out int id))
     {
-        Console.WriteLine("Digite o ID do usuário que você deseja deletar: ");
-        if (int.TryParse(Console.ReadLine(), out int id))
+        using (SqlConnection connect = new(connectString))
         {
-            //todo: Ir no banco buscar
+            connect.Open();
+            string query = "SELECT id FROM pessoa WHERE id = @id";
             Pessoa pessoa = null;
-            foreach (var p in pessoas)
+            using (SqlCommand command = new(query, connect))
             {
-                if (p.id == id)
+                command.Parameters.AddWithValue("@id", id);
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    pessoa = p;
-                    break;
+                    if (reader.Read())
+                    {
+                        pessoa = new Pessoa
+                        {
+                            id = Convert.ToInt32(reader["id"])
+                        };
+                    }
                 }
             }
 
             if (pessoa != null)
             {
-                using (SqlConnection connect = new(connectString))
+                query = "DELETE FROM pessoa WHERE id = @id";
+                using (SqlCommand command = new(query, connect))
                 {
-                    connect.Open();
-                    string query = "DELETE FROM pessoa WHERE id = @id";
-                    using (SqlCommand command = new(query, connect))
+                    command.Parameters.AddWithValue("@id", id);
+                    int deletaLinha = command.ExecuteNonQuery();
+                    if (deletaLinha > 0)
                     {
-                        command.Parameters.AddWithValue("@id", id);
-                        int deletaLinha = command.ExecuteNonQuery();
-                        if (deletaLinha > 0)
-                        {
-                            Console.WriteLine("Usuário deletado com sucesso.");
-                            pessoas.Remove(pessoa);
-                        }
-                        else
-                        {
-                            Console.WriteLine("Erro ao deletar o usuário.");
-                        }
+                        Console.WriteLine("Usuário deletado com sucesso.");
                     }
-                    connect.Close();
+                    else
+                    {
+                        Console.WriteLine("Erro ao deletar o usuário.");
+                    }
                 }
             }
             else
             {
                 Console.WriteLine("Usuário não encontrado.");
             }
-        }
-        else
-        {
-            Console.WriteLine("ID inválido.");
+
+            connect.Close();
         }
     }
+    else
+    {
+        Console.WriteLine("ID inválido.");
+    }
+}
+
 
     public class Pessoa
     {
