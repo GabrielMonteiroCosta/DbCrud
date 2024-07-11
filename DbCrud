@@ -11,7 +11,6 @@ internal class Program
 
         while (true)
         {
-
             Console.WriteLine("" +
                 "\n(1) Adicionar um usuário" +
                 "\n(2) Listar os usuários cadastrados" +
@@ -57,8 +56,14 @@ internal class Program
                 Pessoa pessoa = new();
                 Console.WriteLine("Digite o nome do novo usuário: ");
                 pessoa.nome = Console.ReadLine();
-                Console.WriteLine("Digite o telefone do usuário: ");
+                Console.WriteLine("Digite o telefone(Celular) do usuário: ");
                 pessoa.telefone = Console.ReadLine();
+                if(pessoa.telefone.Length != 11)
+                {
+                    Console.WriteLine("Por favor, digite um número de celular válido (11 Digitos) ");
+                    Console.WriteLine("Digite o telefone do usuário: ");
+                    pessoa.telefone = Console.ReadLine();
+                }
                 int status = 1;
                 int id;
                 pessoa.status = status;
@@ -135,11 +140,19 @@ internal class Program
                 {
                     Console.WriteLine($"O ID selecionado foi {id}");
                     Console.WriteLine($"O nome atual é: {pessoa.nome}");
-                    Console.WriteLine("Digite o novo nome do usuário: ");
+                    Console.Write("Digite o novo nome do usuário: ");
                     string novoNome = Console.ReadLine();
                     Console.WriteLine($"O Número de Telefone atual é: {pessoa.telefone}");
-                    Console.WriteLine("Digite o novo telefone do usuário: ");
+                    Console.Write("Digite o novo telefone do usuário: ");
                     string novoTelefone = Console.ReadLine();
+
+                    if(novoTelefone.Length != 11)
+                    {
+                        Console.WriteLine("O número de celular não possui 11 digitos, por favor digite um número válido.");
+                        Console.Write("Digite o telefone do usuário: ");
+                        string NovoTelefone = Console.ReadLine();
+                        novoTelefone = NovoTelefone;
+                    }
 
                     query = "UPDATE Pessoas SET nome = @nome, telefone = @telefone WHERE id = @id";
                     using (SqlCommand command = new(query, connect))
@@ -150,19 +163,22 @@ internal class Program
 
                         int atualizaLinha = command.ExecuteNonQuery();
                         Console.WriteLine(atualizaLinha > 0 ? "Usuário atualizado com sucesso." : "Erro ao deletar o usuário.");
+                        connect.Close();
+                        return;
                     }
                 }
-                connect.Close();
+                Console.WriteLine("O ID digitado não existe.");
             }
         }
-        else{ Console.WriteLine("ID inválido."); }
+        else { Console.WriteLine("ID inválido."); }
     }
     static void DeletarUser(List<Pessoa> pessoas)
     {
+        ListarUser(pessoas);
         Console.WriteLine("Digite o ID do usuário que você deseja deletar: ");
         if (int.TryParse(Console.ReadLine(), out int id))
         {
-            
+
             using (SqlConnection connect = new(connectString))
             {
                 connect.Open();
@@ -194,7 +210,8 @@ internal class Program
                 }
                 connect.Close();
             }
-        } else { Console.WriteLine("Digite um valor válido."); }
+        }
+        else { Console.WriteLine("Digite um valor válido."); }
     }
     public class Pessoa
     {
