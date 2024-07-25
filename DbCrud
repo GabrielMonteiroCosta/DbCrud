@@ -1,223 +1,234 @@
-using Newtonsoft.Json;
+
+using System;
 using System.Data.SqlClient;
+using System.Runtime.CompilerServices;
 
 internal class Program
 {
-    // todo criar o crud para informações do banco, criar o banco Pessoa com Id, Nome, Status e Telefone
-    const string connectString = "Server=DESKTOP-DB5M39P;Database=Cadastro;User Id=sa;Password=Vector5**;";
+    const string connectionString = "Server=DESKTOP-UFKML55;Database=Boliche1;User Id=sa;Password=Vector5**;";
     private static void Main(string[] args)
     {
-        List<Pessoa> pessoas = new();
+        List<Cliente> clientes = new();
+        List<Produto> produtos = new();
+        tabelaPreco();
+        CreateProduct(produtos);
+        //validaParticipantes();
+        //CadastrarCliente(clientes);
+    }
+    static void tabelaPreco()
+    {
+        DateTime horaAtual = DateTime.Now;
+        Console.WriteLine("\n|-----------------------|\n|Bem-Vindo ao Gaboliche!|\n|-----------------------|");
+        Console.WriteLine("\n***Veja a nossa tabela de preços de Segunda até Quinta-Feira***");
+        Console.WriteLine("\n|-----------------------------|" +
+            "\n|12h00 até às 17h00 = R$100,00|" +
+            "\n|17h00 até às 22h00 = R$120,00|");
+        Console.WriteLine("|-----------------------------|");
+        Console.WriteLine("\nVALOR FIXO NO TÊNIS E MEIAS: R$10,00");
 
+        Console.WriteLine("\n***Veja a nossa tabela de preços de Sexta à Domingo (Vésperas e Feriados)***");
+        Console.WriteLine("\n|-----------------------------|" +
+            "\n|12h00 até às 17h00 = R$110,00|" +
+            "\n|17h00 até às 22h00 = R$130,00|");
+        Console.WriteLine("|-----------------------------|");
+        Console.WriteLine("\nVALOR FIXO NO TÊNIS E MEIAS: R$10,00");
+    }
+    static void validaParticipantes()
+    {
+        Console.Write("\nPor favor insira quantas pessoas vão participar (MÁX 6 PESSOAS):");
         while (true)
         {
-            Console.WriteLine("" +
-                "\n(1) Adicionar um usuário" +
-                "\n(2) Listar os usuários cadastrados" +
-                "\n(3) Atualizar o cadastro de um usuário" +
-                "\n(4) Deletar o cadastro de um usuário" +
-                "\n(0) Encerrar o programa");
-
-            Console.WriteLine("\nSelecione a operação desejada: ");
-            string opcao = Console.ReadLine();
-
-            switch (opcao)
+            if (int.TryParse(Console.ReadLine(), out int participantes))
             {
-                case "1":
-                    CriarUser(pessoas);
+                if (participantes <= 5 && participantes > 0)
+                {
+                    Console.WriteLine($"Separando equipamento para {participantes} pessoas, deseja fazer o nosso cadastro Gaboliche-Fã?\n" +
+                        "Usuários cadastrados no nosso sistema ganham 15% de desconto na sexta vez que vem aqui!");
                     break;
-                case "2":
-                    ListarUser(pessoas);
+                }
+                if (participantes > 6)
+                {
+                    Console.WriteLine("Mais do que 6(Seis) pessoas não são suportadas, o limite são 6 Pistas!");
+                    Console.WriteLine($"Você quer entrar com 6 pessoas, lembrando que os outros {participantes - 6} participantes entraram em uma fila de espera. ");
+                    Console.WriteLine("Continuar com 6 participantes(S/N): ");
+                    string continuaComFila = Console.ReadLine();
+                    if ("s".Equals(continuaComFila, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Continuando com 6 pessoas!");
+                        continue;
+                    }
+                    if ("n".Equals(continuaComFila, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.Write("Ok, muito obrigado pela compreensão!");
+                        return;
+                    }
+
+
+                }
+                if (participantes == 6)
+                {
+                    Console.WriteLine("Separando equipamento para 6 pessoas, 5% de desconto aplicado para cada um no valor final!");
                     break;
-                case "3":
-                    AtualizarUser(pessoas);
-                    break;
-                case "4":
-                    DeletarUser(pessoas);
-                    break;
-                case "0":
-                    Console.WriteLine("Saindo e encerrando programa.");
-                    return;
-                default:
-                    Console.WriteLine("Você digitou uma opção inválida!");
-                    break;
+                }
             }
         }
     }
-
-    static void CriarUser(List<Pessoa> pessoas)
+    static void CadastrarCliente(List<Cliente> clientes)
     {
-        using (SqlConnection connect = new(connectString))
+        Cliente cliente = new();
+        try
+        {
+            cliente.CPF = CreateCPF();
+        }
+        catch
+        {
+            return;
+        }
+        Console.Write("Insira o Nome do Player: ");
+        cliente.Nome = Console.ReadLine();
+        Console.Write("Insira o telefone do cliente (DDD): ");
+        cliente.Telefone = Console.ReadLine();
+        cliente.Historico += 1;
+
+        using (SqlConnection connect = new(connectionString))
         {
             connect.Open();
-            string query = "declare @id int = (select isnull(max(id)+1,1) from Pessoas)\r\ndeclare @status bit = 'true'\r\n \r\ninsert into Pessoas \r\n(\r\n\tNome,\r\n\tStatus,\r\n\tTelefone,\r\n\tId\r\n) values \r\n(\r\n\t@nome,\r\n\t@status,\r\n\t@telefone,\r\n\t@id\r\n)";
+            int proximoId;
+            using (SqlCommand cmdNextId = new("SELECT ISNULL(MAX(id), 0) + 1 FROM Clientes", connect))
+            {
+                proximoId = (int)cmdNextId.ExecuteScalar();
+            }
+            string query = @"
+                insert into Clientes
+                (
+                	Id, Nome, CPF, Status, Telefone, Historico
+                )
+                values 
+                (
+                	@id, @nome, @CPF, 1, @telefone, @historico
+                )";
             using (SqlCommand command = new(query, connect))
             {
-                Pessoa pessoa = new();
-                Console.WriteLine("Digite o nome do novo usuário: ");
-                pessoa.nome = Console.ReadLine();
-                Console.WriteLine("Digite o telefone(Celular) do usuário: ");
-                pessoa.telefone = Console.ReadLine();
-                if(pessoa.telefone.Length != 11)
-                {
-                    Console.WriteLine("Por favor, digite um número de celular válido (11 Digitos) ");
-                    Console.WriteLine("Digite o telefone do usuário: ");
-                    pessoa.telefone = Console.ReadLine();
-                }
-                int status = 1;
-                int id;
-                pessoa.status = status;
-                pessoas.Add(pessoa);
-
-                command.Parameters.AddWithValue("@nome", pessoa.nome);
-                command.Parameters.AddWithValue("@telefone", string.IsNullOrEmpty(pessoa.telefone) ? DBNull.Value : pessoa.telefone);
+                command.Parameters.AddWithValue("@id", proximoId);
+                command.Parameters.AddWithValue("@nome", cliente.Nome);
+                command.Parameters.AddWithValue("@CPF", cliente.CPF);
+                command.Parameters.AddWithValue("@historico", cliente.Historico);
+                command.Parameters.AddWithValue("@telefone", string.IsNullOrEmpty(cliente.Telefone) ? DBNull.Value : cliente.Telefone);
 
                 command.ExecuteNonQuery();
                 Console.WriteLine("Usuário cadastrado com sucesso.");
-            }
-
-            connect.Close();
-        }
-    }
-    static void ListarUser(List<Pessoa> pessoas)
-    {
-        using (SqlConnection connect = new(connectString))
-        {
-            connect.Open();
-            string query = @"SELECT id, nome, status, telefone FROM Pessoas";
-            using (SqlCommand command = new(query, connect))
-            {
-                using (SqlDataReader reader = command.ExecuteReader())
-                {
-                    pessoas.Clear();
-                    while (reader.Read())
-                    {
-                        Pessoa pessoa = new()
-                        {
-                            id = Convert.ToInt32(reader["id"]),
-                            nome = reader["nome"].ToString(),
-                            status = Convert.ToInt32(reader["status"]),
-                            telefone = (reader["telefone"] ?? "").ToString()
-                        };
-                        pessoas.Add(pessoa);
-                    }
-                }
-                Console.WriteLine("Lista de usuários já cadastrados: ");
-                Console.WriteLine(JsonConvert.SerializeObject(new { pessoas }, Formatting.Indented));
-            }
-            connect.Close();
-        }
-    }
-    static void AtualizarUser(List<Pessoa> pessoas)
-    {
-        ListarUser(pessoas);
-        Console.WriteLine("Digite o ID do usuário que você deseja atualizar: ");
-        if (int.TryParse(Console.ReadLine(), out int id))
-        {
-            using (SqlConnection connect = new(connectString))
-            {
-                connect.Open();
-                string query = "SELECT id, nome, status, telefone FROM Pessoas WHERE id = @id";
-                Pessoa pessoa = null;
-                using (SqlCommand command = new(query, connect))
-                {
-                    command.Parameters.AddWithValue("@id", id);
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            pessoa = new Pessoa
-                            {
-                                id = Convert.ToInt32(reader["id"]),
-                                nome = reader["nome"].ToString(),
-                                status = Convert.ToInt32(reader["status"]),
-                                telefone = reader["telefone"].ToString()
-                            };
-                        }
-                    }
-                }
-                if (pessoa is not null)
-                {
-                    Console.WriteLine($"O ID selecionado foi {id}");
-                    Console.WriteLine($"O nome atual é: {pessoa.nome}");
-                    Console.Write("Digite o novo nome do usuário: ");
-                    string novoNome = Console.ReadLine();
-                    Console.WriteLine($"O Número de Telefone atual é: {pessoa.telefone}");
-                    Console.Write("Digite o novo telefone do usuário: ");
-                    string novoTelefone = Console.ReadLine();
-
-                    if(novoTelefone.Length != 11)
-                    {
-                        Console.WriteLine("O número de celular não possui 11 digitos, por favor digite um número válido.");
-                        Console.Write("Digite o telefone do usuário: ");
-                        string NovoTelefone = Console.ReadLine();
-                        novoTelefone = NovoTelefone;
-                    }
-
-                    query = "UPDATE Pessoas SET nome = @nome, telefone = @telefone WHERE id = @id";
-                    using (SqlCommand command = new(query, connect))
-                    {
-                        command.Parameters.AddWithValue("@id", id);
-                        command.Parameters.AddWithValue("@nome", novoNome);
-                        command.Parameters.AddWithValue("@telefone", novoTelefone ?? (object)DBNull.Value);
-
-                        int atualizaLinha = command.ExecuteNonQuery();
-                        Console.WriteLine(atualizaLinha > 0 ? "Usuário atualizado com sucesso." : "Erro ao deletar o usuário.");
-                        connect.Close();
-                        return;
-                    }
-                }
-                Console.WriteLine("O ID digitado não existe.");
-            }
-        }
-        else { Console.WriteLine("ID inválido."); }
-    }
-    static void DeletarUser(List<Pessoa> pessoas)
-    {
-        ListarUser(pessoas);
-        Console.WriteLine("Digite o ID do usuário que você deseja deletar: ");
-        if (int.TryParse(Console.ReadLine(), out int id))
-        {
-
-            using (SqlConnection connect = new(connectString))
-            {
-                connect.Open();
-                string query = "SELECT id FROM Pessoas WHERE id = @id";
-                Pessoa pessoa = null;
-                using (SqlCommand command = new(query, connect))
-                {
-                    command.Parameters.AddWithValue("@id", id);
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            pessoa = new Pessoa
-                            {
-                                id = Convert.ToInt32(reader["id"])
-                            };
-                        }
-                    }
-                }
-                if (pessoa is not null)
-                {
-                    query = "DELETE FROM Pessoas WHERE id = @id";
-                    using (SqlCommand command = new(query, connect))
-                    {
-                        command.Parameters.AddWithValue("@id", id);
-                        int deletaLinha = command.ExecuteNonQuery();
-                        Console.WriteLine(deletaLinha > 0 ? "Usuário deletado com sucesso." : "Erro ao deletar o usuário.");
-                    }
-                }
                 connect.Close();
             }
         }
-        else { Console.WriteLine("Digite um valor válido."); }
     }
-    public class Pessoa
+    static void CreateProduct(List<Produto> produtos)
     {
-        public int id { get; set; }
-        public string? nome { get; set; }
-        public string? telefone { get; set; }
-        public int status { get; set; }
+        Produto produto = new Produto();
+        Console.Write("Insira a descrição do Produto: ");
+        produto.Descricao = Console.ReadLine();
+        Console.WriteLine("Insira a Quantidade que há em estoque desse produto: ");
+        if(int.TryParse(Console.ReadLine(), out int qtdAtual))
+        {
+            produto.Quantidade = qtdAtual;
+        }
+        else
+        {
+            Console.WriteLine("Insira uma quantidade válida para o produto!");
+        }
+        Console.WriteLine("Insira o Preço de Venda desse produto: ");
+        if (double.TryParse(Console.ReadLine(), out double precoVenda))
+        {
+            produto.PrecoVenda = precoVenda;
+        }
+        else
+        {
+            Console.WriteLine("Insira um Preço em R$ para o produto!");
+        }
+
+        using(SqlConnection connection = new(connectionString))
+        {
+            connection.Open();
+            int proximoId;
+            using (SqlCommand cmdNextId = new("SELECT ISNULL(MAX(idItem), 0) + 1 FROM Produtos", connection))
+            {
+                proximoId = (int)cmdNextId.ExecuteScalar();
+            }
+            string query = @"insert into Produtos
+                (
+                	idItem, descricao, quantidade, precoVenda
+                )
+                values 
+                ( 
+                    @idItem, @descricao, @quantidade, @precoVenda
+                );";
+            using(SqlCommand command = new SqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@idItem", proximoId);
+                command.Parameters.AddWithValue("@descricao", produto.Descricao);
+                command.Parameters.AddWithValue("@quantidade", produto.Quantidade);
+                command.Parameters.AddWithValue("@precoVenda", produto.PrecoVenda);
+
+                command.ExecuteNonQuery();
+                Console.WriteLine("Produto cadastrado com sucesso.");
+                connection.Close();
+
+
+            }
+        }
+    }
+    public static string? CreateCPF()
+    {
+        static string? ValidaCPF()
+        {
+            Console.WriteLine("Digite o CPF: ");
+            string? validar = Console.ReadLine();
+            if (!Equals(validar?.Length, 11))
+            {
+                Console.WriteLine("Não foi possível registrar esse CPF, parece que há menos números do que deveria!");
+                ValidaCPF();
+            }
+            return validar;
+        }
+
+        string? cpf = ValidaCPF();
+        using (SqlConnection connect = new(connectionString))
+        {
+            connect.Open();
+            using (SqlCommand command = connect.CreateCommand())
+            {
+                command.CommandText = $"Select count(CPF) from Clientes where CPF = @CPF";
+                command.Parameters.AddWithValue("CPF", string.IsNullOrEmpty(cpf) ? DBNull.Value : cpf);
+                var obj = (int)command.ExecuteScalar();
+                connect.Close();
+                if (obj > 0)
+                {
+                    throw new Exception("Esse número de CPF já existe cadastrado no Gaboliche!");
+                }
+                return cpf;
+            }
+        }
+    }
+
+
+    public class Cliente
+    {
+        public int Id { get; set; }
+        public string? Nome { get; set; }
+        public string CPF { get; set; }
+        public string? Telefone { get; set; }
+        public int Status { get; set; }
+        public int Historico { get; set; }
+    }
+
+    public class Produto
+    {
+        public int IdItem { get; set; }
+        public string Descricao { get; set; }
+        public int Quantidade { get; set; }
+        public double PrecoVenda { get; set; }
+    }
+    public class Cardapio : Produto
+    {
+        public string Categoria { get; set; }
     }
 }
